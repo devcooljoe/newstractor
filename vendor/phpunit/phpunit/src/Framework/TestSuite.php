@@ -192,10 +192,6 @@ class TestSuite implements \IteratorAggregate, SelfDescribing, Test
                 continue;
             }
 
-            if (!TestUtil::isTestMethod($method)) {
-                continue;
-            }
-
             $this->addTestMethod($theClass, $method);
         }
 
@@ -610,7 +606,7 @@ class TestSuite implements \IteratorAggregate, SelfDescribing, Test
                 }
             }
         } catch (\Throwable $t) {
-            $message = "Exception in {$this->name}::{$afterClassMethod}" . \PHP_EOL . $t->getMessage();
+            $message = "Exception in {$this->name}::$afterClassMethod" . \PHP_EOL . $t->getMessage();
             $error   = new SyntheticError($message, 0, $t->getFile(), $t->getLine(), $t->getTrace());
 
             $placeholderTest = clone $test;
@@ -672,8 +668,6 @@ class TestSuite implements \IteratorAggregate, SelfDescribing, Test
      * @param string $message
      *
      * @throws SkippedTestSuiteError
-     *
-     * @psalm-return never-return
      */
     public function markTestSuiteSkipped($message = ''): void
     {
@@ -753,6 +747,20 @@ class TestSuite implements \IteratorAggregate, SelfDescribing, Test
         }
 
         $methodName = $method->getName();
+
+        if (!$method->isPublic()) {
+            $this->addTest(
+                new WarningTestCase(
+                    \sprintf(
+                        'Test method "%s" in test class "%s" is not public.',
+                        $methodName,
+                        $class->getName()
+                    )
+                )
+            );
+
+            return;
+        }
 
         $test = (new TestBuilder)->build($class, $methodName);
 

@@ -33,7 +33,7 @@ class Application extends Container implements ApplicationContract, CachesConfig
      *
      * @var string
      */
-    const VERSION = '7.30.0';
+    const VERSION = '7.2.2';
 
     /**
      * The base path for the Laravel installation.
@@ -152,7 +152,7 @@ class Application extends Container implements ApplicationContract, CachesConfig
      *
      * @var array
      */
-    protected $absoluteCachePathPrefixes = ['/', '\\'];
+    protected $absoluteCachePathPrefixes = [DIRECTORY_SEPARATOR];
 
     /**
      * Create a new Illuminate application instance.
@@ -195,11 +195,9 @@ class Application extends Container implements ApplicationContract, CachesConfig
         $this->instance(Container::class, $this);
         $this->singleton(Mix::class);
 
-        $this->singleton(PackageManifest::class, function () {
-            return new PackageManifest(
-                new Filesystem, $this->basePath(), $this->getCachedPackagesPath()
-            );
-        });
+        $this->instance(PackageManifest::class, new PackageManifest(
+            new Filesystem, $this->basePath(), $this->getCachedPackagesPath()
+        ));
     }
 
     /**
@@ -1103,17 +1101,6 @@ class Application extends Container implements ApplicationContract, CachesConfig
     }
 
     /**
-     * Determine if the given service provider is loaded.
-     *
-     * @param  string  $provider
-     * @return bool
-     */
-    public function providerIsLoaded(string $provider)
-    {
-        return isset($this->loadedProviders[$provider]);
-    }
-
-    /**
      * Get the application's deferred services.
      *
      * @return array
@@ -1178,16 +1165,6 @@ class Application extends Container implements ApplicationContract, CachesConfig
     }
 
     /**
-     * Get the current application fallback locale.
-     *
-     * @return string
-     */
-    public function getFallbackLocale()
-    {
-        return $this['config']->get('app.fallback_locale');
-    }
-
-    /**
      * Set the current application locale.
      *
      * @param  string  $locale
@@ -1200,19 +1177,6 @@ class Application extends Container implements ApplicationContract, CachesConfig
         $this['translator']->setLocale($locale);
 
         $this['events']->dispatch(new LocaleUpdated($locale));
-    }
-
-    /**
-     * Set the current application fallback locale.
-     *
-     * @param  string  $fallbackLocale
-     * @return void
-     */
-    public function setFallbackLocale($fallbackLocale)
-    {
-        $this['config']->set('app.fallback_locale', $fallbackLocale);
-
-        $this['translator']->setFallback($fallbackLocale);
     }
 
     /**

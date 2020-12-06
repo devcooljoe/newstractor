@@ -159,7 +159,7 @@ class HtmlDumper extends CliDumper
             return $this->dumpHeader;
         }
 
-        $line = str_replace('{$options}', json_encode($this->displayOptions, \JSON_FORCE_OBJECT), <<<'EOHTML'
+        $line = str_replace('{$options}', json_encode($this->displayOptions, JSON_FORCE_OBJECT), <<<'EOHTML'
 <script>
 Sfdump = window.Sfdump || (function (doc) {
 
@@ -424,12 +424,18 @@ return function (root, x) {
                 a.innerHTML += ' ';
             }
             a.title = (a.title ? a.title+'\n[' : '[')+keyHint+'+click] Expand all children';
-            a.innerHTML += elt.className == 'sf-dump-compact' ? '<span>▶</span>' : '<span>▼</span>';
+            a.innerHTML += '<span>▼</span>';
             a.className += ' sf-dump-toggle';
 
             x = 1;
             if ('sf-dump' != elt.parentNode.className) {
                 x += elt.parentNode.getAttribute('data-depth')/1;
+            }
+            elt.setAttribute('data-depth', x);
+            var className = elt.className;
+            elt.className = 'sf-dump-expanded';
+            if (className ? 'sf-dump-expanded' !== className : (x > options.maxDepth)) {
+                toggle(a);
             }
         } else if (/\bsf-dump-ref\b/.test(elt.className) && (a = elt.getAttribute('href'))) {
             a = a.substr(1);
@@ -594,7 +600,7 @@ return function (root, x) {
                     */
                     return;
                 }
-
+    
                 e.preventDefault();
                 search.className = search.className.replace(/\bsf-dump-search-hidden\b/, '');
                 searchInput.focus();
@@ -800,8 +806,7 @@ EOHTML
     {
         if ('' === $str && isset($cursor->attr['img-data'], $cursor->attr['content-type'])) {
             $this->dumpKey($cursor);
-            $this->line .= $this->style('default', $cursor->attr['img-size'] ?? '', []);
-            $this->line .= $cursor->depth >= $this->displayOptions['maxDepth'] ? ' <samp class=sf-dump-compact>' : ' <samp class=sf-dump-expanded>';
+            $this->line .= $this->style('default', $cursor->attr['img-size'] ?? '', []).' <samp>';
             $this->endValue($cursor);
             $this->line .= $this->indentPad;
             $this->line .= sprintf('<img src="data:%s;base64,%s" /></samp>', $cursor->attr['content-type'], base64_encode($cursor->attr['img-data']));
@@ -821,16 +826,18 @@ EOHTML
         }
         parent::enterHash($cursor, $type, $class, false);
 
-        if ($cursor->skipChildren || $cursor->depth >= $this->displayOptions['maxDepth']) {
+        if ($cursor->skipChildren) {
             $cursor->skipChildren = false;
             $eol = ' class=sf-dump-compact>';
-        } else {
+        } elseif ($this->expandNextHash) {
             $this->expandNextHash = false;
             $eol = ' class=sf-dump-expanded>';
+        } else {
+            $eol = '>';
         }
 
         if ($hasChild) {
-            $this->line .= '<samp data-depth='.($cursor->depth + 1);
+            $this->line .= '<samp';
             if ($cursor->refIndex) {
                 $r = Cursor::HASH_OBJECT !== $type ? 1 - (Cursor::HASH_RESOURCE !== $type) : 2;
                 $r .= $r && 0 < $cursor->softRefHandle ? $cursor->softRefHandle : $cursor->refIndex;
@@ -964,7 +971,7 @@ EOHTML
         if (-1 === $depth) {
             $args = ['"'.$this->dumpId.'"'];
             if ($this->extraDisplayOptions) {
-                $args[] = json_encode($this->extraDisplayOptions, \JSON_FORCE_OBJECT);
+                $args[] = json_encode($this->extraDisplayOptions, JSON_FORCE_OBJECT);
             }
             // Replace is for BC
             $this->line .= sprintf(str_replace('"%s"', '%s', $this->dumpSuffix), implode(', ', $args));
@@ -993,5 +1000,5 @@ EOHTML
 
 function esc($str)
 {
-    return htmlspecialchars($str, \ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }

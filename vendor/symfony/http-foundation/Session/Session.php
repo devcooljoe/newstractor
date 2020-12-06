@@ -18,11 +18,6 @@ use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
 use Symfony\Component\HttpFoundation\Session\Storage\SessionStorageInterface;
 
-// Help opcache.preload discover always-needed symbols
-class_exists(AttributeBag::class);
-class_exists(FlashBag::class);
-class_exists(SessionBagProxy::class);
-
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Drak <drak@zikula.org>
@@ -35,12 +30,10 @@ class Session implements SessionInterface, \IteratorAggregate, \Countable
     private $attributeName;
     private $data = [];
     private $usageIndex = 0;
-    private $usageReporter;
 
-    public function __construct(SessionStorageInterface $storage = null, AttributeBagInterface $attributes = null, FlashBagInterface $flashes = null, callable $usageReporter = null)
+    public function __construct(SessionStorageInterface $storage = null, AttributeBagInterface $attributes = null, FlashBagInterface $flashes = null)
     {
         $this->storage = $storage ?: new NativeSessionStorage();
-        $this->usageReporter = $usageReporter;
 
         $attributes = $attributes ?: new AttributeBag();
         $this->attributeName = $attributes->getName();
@@ -155,9 +148,6 @@ class Session implements SessionInterface, \IteratorAggregate, \Countable
     {
         if ($this->isStarted()) {
             ++$this->usageIndex;
-            if ($this->usageReporter && 0 <= $this->usageIndex) {
-                ($this->usageReporter)();
-            }
         }
         foreach ($this->data as &$data) {
             if (!empty($data)) {
@@ -234,9 +224,6 @@ class Session implements SessionInterface, \IteratorAggregate, \Countable
     public function getMetadataBag()
     {
         ++$this->usageIndex;
-        if ($this->usageReporter && 0 <= $this->usageIndex) {
-            ($this->usageReporter)();
-        }
 
         return $this->storage->getMetadataBag();
     }
@@ -246,7 +233,7 @@ class Session implements SessionInterface, \IteratorAggregate, \Countable
      */
     public function registerBag(SessionBagInterface $bag)
     {
-        $this->storage->registerBag(new SessionBagProxy($bag, $this->data, $this->usageIndex, $this->usageReporter));
+        $this->storage->registerBag(new SessionBagProxy($bag, $this->data, $this->usageIndex));
     }
 
     /**

@@ -11,16 +11,28 @@
 namespace Carbon\Traits;
 
 use Closure;
-use Generator;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 use Throwable;
 
 /**
- * Trait Mixin.
+ * Trait Boundaries.
  *
- * Allows mixing in entire classes with multiple macros.
+ * startOf, endOf and derived method for each unit.
+ *
+ * Depends on the following properties:
+ *
+ * @property int $year
+ * @property int $month
+ * @property int $daysInMonth
+ * @property int $quarter
+ *
+ * Depends on the following methods:
+ *
+ * @method $this setTime(int $hour, int $minute, int $second = 0, int $microseconds = 0)
+ * @method $this setDate(int $year, int $month, int $day)
+ * @method $this addMonths(int $value = 1)
  */
 trait Mixin
 {
@@ -64,13 +76,13 @@ trait Mixin
      */
     public static function mixin($mixin)
     {
-        \is_string($mixin) && trait_exists($mixin)
+        is_string($mixin) && trait_exists($mixin)
             ? static::loadMixinTrait($mixin)
             : static::loadMixinClass($mixin);
     }
 
     /**
-     * @param object|string $mixin
+     * @param string $mixin
      *
      * @throws ReflectionException
      */
@@ -96,40 +108,28 @@ trait Mixin
      */
     private static function loadMixinTrait($trait)
     {
-        $context = eval(self::getAnonymousClassCodeForTrait($trait));
-        $className = \get_class($context);
+        $baseClass = static::class;
+        $context = eval('return new class() extends '.$baseClass.' {use '.$trait.';};');
+        $className = get_class($context);
 
-        foreach (self::getMixableMethods($context) as $name) {
+        foreach (get_class_methods($context) as $name) {
+            if (method_exists($baseClass, $name)) {
+                continue;
+            }
+
             $closureBase = Closure::fromCallable([$context, $name]);
 
             static::macro($name, function () use ($closureBase, $className) {
-                /** @phpstan-ignore-next-line */
                 $context = isset($this) ? $this->cast($className) : new $className();
 
                 try {
                     $closure = $closureBase->bindTo($context);
-                } catch (Throwable $throwable) {
+                } catch (Throwable $e) {
                     $closure = $closureBase;
                 }
 
-                return $closure(...\func_get_args());
+                return $closure(...func_get_args());
             });
-        }
-    }
-
-    private static function getAnonymousClassCodeForTrait(string $trait)
-    {
-        return 'return new class() extends '.static::class.' {use '.$trait.';};';
-    }
-
-    private static function getMixableMethods(self $context): Generator
-    {
-        foreach (get_class_methods($context) as $name) {
-            if (method_exists(static::class, $name)) {
-                continue;
-            }
-
-            yield $name;
         }
     }
 

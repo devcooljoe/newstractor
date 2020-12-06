@@ -102,9 +102,7 @@ class NotificationSender
                 $notificationId = Str::uuid()->toString();
 
                 foreach ((array) $viaChannels as $channel) {
-                    if (! ($notifiable instanceof AnonymousNotifiable && $channel === 'database')) {
-                        $this->sendToNotifiable($notifiable, $notificationId, clone $original, $channel);
-                    }
+                    $this->sendToNotifiable($notifiable, $notificationId, clone $original, $channel);
                 }
             });
         }
@@ -192,16 +190,10 @@ class NotificationSender
                     $notification->locale = $this->locale;
                 }
 
-                $queue = $notification->queue;
-
-                if (method_exists($notification, 'viaQueues')) {
-                    $queue = $notification->viaQueues()[$channel] ?? null;
-                }
-
                 $this->bus->dispatch(
                     (new SendQueuedNotifications($notifiable, $notification, [$channel]))
                             ->onConnection($notification->connection)
-                            ->onQueue($queue)
+                            ->onQueue($notification->queue)
                             ->delay($notification->delay)
                             ->through(
                                 array_merge(
