@@ -1,0 +1,1 @@
+[28-Mar-2019 15:01:35 America/Chicago] PHP Fatal error:  Class 'PHPMailer' not found in /home/martins2/public_html/php/phpmailer/class.phpmaileroauth.php on line 26
